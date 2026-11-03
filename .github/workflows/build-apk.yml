@@ -1,0 +1,44 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.8'   # 失败就换成 '3.29.3'
+          channel: 'stable'
+          cache: true
+
+      # 让 debug keystore 在多次构建间保持一致，避免每次签名不同导致无法覆盖安装
+      - name: Cache debug keystore
+        uses: actions/cache@v4
+        with:
+          path: ~/.android
+          key: android-debug-keystore-v1
+
+      - run: flutter --version
+      - run: flutter pub get
+
+      # 项目若在 pubspec 的 assets 里声明了 .env，缺文件会导致构建失败
+      - run: cp .env.example .env || true
+
+      - run: flutter build apk --release --split-per-abi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SubtitleStudio-apk
+          path: build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: error
