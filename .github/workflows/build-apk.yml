@@ -18,24 +18,38 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.32.8'   # 失败就换成 '3.29.3'
+          flutter-version: '3.32.8'
           channel: 'stable'
           cache: true
 
-      # 让 debug keystore 在多次构建间保持一致，避免每次签名不同导致无法覆盖安装
-      - name: Cache debug keystore
-        uses: actions/cache@v4
-        with:
-          path: ~/.android
-          key: android-debug-keystore-v1
+      # 1. 生成 pubspec 里声明为 asset 的 .env
+      - name: Create .env asset
+        run: printf 'GEMINI_API_KEY=%s\n' "${GEMINI_API_KEY}" > .env
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-      - run: flutter --version
-      - run: flutter pub get
+      # 2. android 目录若缺失则自动生成
+      - name: Ensure android platform
+        run: |
+          if [ ! -d android ]; then
+            flutter create --platforms=android --project-name subtitle_studio .
+          fi
 
-      # 项目若在 pubspec 的 assets 里声明了 .env，缺文件会导致构建失败
-      - run: cp .env.example .env || true
+      - name: Pub get
+        run: flutter pub get
 
-      - run: flutter build apk --release --split-per-abi
+      # 3. ffmpeg_kit 要求 NDK 27，先写进 gradle 免得报错
+      - name: Pin NDK version
+        run: |
+          f=android/app/build.gradle.kts
+          [ -f "$f" ] || f=android/app/build.gradle
+          if ! grep -q ndkVersion "$f"; then
+            sed -i '0,/^android {/s//android {\n    ndkVersion = "27.0.12077973"/' "$f"
+          fi
+          grep -n ndkVersion "$f" || true
+
+      - name: Build APK
+        run: flutter build apk --release --split-per-abi
 
       - uses: actions/upload-artifact@v4
         with:
