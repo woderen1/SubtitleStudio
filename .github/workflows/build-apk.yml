@@ -48,6 +48,10 @@ jobs:
           fi
           grep -n ndkVersion "$f" || true
 
+      - name: Regenerate Isar schemas
+        run: dart run build_runner build --delete-conflicting-outputs
+
+
       - name: Build APK
         run: flutter build apk --release --split-per-abi
 
