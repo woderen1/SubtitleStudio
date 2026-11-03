@@ -49,12 +49,6 @@ dependencies:
     git:
       url: https://github.com/AkhmadRamadani/flutter_gemini.git
 
-dependency_overrides:
-  hotkey_manager_linux:
-    git:
-      url: https://github.com/gepbird/hotkey_manager.git
-      ref: fix-build-failure
-      path: packages/hotkey_manager_linux
 
 dev_dependencies:
   flutter_test:
